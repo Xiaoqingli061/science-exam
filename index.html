@@ -1,0 +1,503 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>北中科学嘉年华 · 机考模拟器</title>
+<style>
+/* SECTION: base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: linear-gradient(160deg, #0e2a47 0%, #16436e 60%, #1d5a8a 100%);
+  color: #1e2a38;
+  display: flex; justify-content: center; align-items: flex-start;
+  min-height: 100vh; padding: clamp(8px, 3vw, 28px);
+}
+.card {
+  width: 100%; max-width: 720px;
+  background: #f6f9fc; border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(2, 16, 32, .45);
+  overflow: hidden; display: flex; flex-direction: column; min-height: 520px;
+}
+/* SECTION: header bar */
+.bar {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+  padding: 12px clamp(12px, 3vw, 22px);
+  background: #0f3357; color: #eaf3fb; font-size: 14px;
+}
+.bar .mod { font-weight: 700; letter-spacing: .5px; }
+.bar .spacer { flex: 1 1 auto; }
+.bar .timer {
+  font-variant-numeric: tabular-nums; font-weight: 700; font-size: 17px;
+  padding: 3px 12px; border-radius: 999px; background: rgba(255,255,255,.12);
+}
+.bar .timer.warn { background: #b3261e; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .55; } }
+.body { flex: 1; padding: clamp(16px, 4vw, 34px); display: flex; flex-direction: column; }
+/* SECTION: screens */
+h1 { font-size: clamp(21px, 5vw, 30px); color: #0f3357; margin-bottom: 6px; }
+.sub { color: #4c6076; font-size: 14px; line-height: 1.7; }
+.rules { margin: 16px 0; display: grid; gap: 10px; }
+.rule {
+  background: #fff; border-left: 4px solid #2f7fc1; border-radius: 8px;
+  padding: 10px 14px; font-size: 14px; line-height: 1.65; color: #33475c;
+}
+.rule b { color: #b3261e; }
+label.f { display: block; font-size: 14px; color: #33475c; margin: 12px 0 6px; font-weight: 600; }
+input.sid {
+  width: 100%; max-width: 320px; font-size: 18px; padding: 10px 14px;
+  border: 2px solid #b9cbdb; border-radius: 10px; letter-spacing: 4px;
+  font-variant-numeric: tabular-nums;
+}
+input.sid:focus { outline: none; border-color: #2f7fc1; }
+.err { color: #b3261e; font-size: 13px; margin-top: 6px; min-height: 18px; }
+button.big {
+  margin-top: 18px; align-self: flex-start;
+  font-size: 18px; font-weight: 700; color: #fff; background: #2f7fc1;
+  border: none; border-radius: 12px; padding: 13px 34px; cursor: pointer;
+  min-width: 44px; min-height: 48px;
+}
+button.big:active { transform: scale(.97); }
+button.ghost { background: transparent; color: #2f7fc1; border: 2px solid #2f7fc1; }
+/* SECTION: instruction screen */
+.tipbox {
+  background: #fff; border-radius: 12px; padding: 18px 20px; margin: 14px 0;
+  font-size: 15px; line-height: 1.8; color: #33475c;
+}
+.tipbox b { color: #0f3357; }
+.count { font-size: 52px; font-weight: 800; color: #2f7fc1; text-align: center; margin: 8px 0; font-variant-numeric: tabular-nums; }
+/* SECTION: question */
+.qstem { font-size: clamp(16px, 3.6vw, 19px); color: #16324c; line-height: 1.7; margin-bottom: 16px; font-weight: 600; }
+.seq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0 18px; }
+.seq .item {
+  background: #fff; border: 2px solid #d7e3ef; border-radius: 12px;
+  min-width: 66px; min-height: 66px; display: flex; align-items: center; justify-content: center;
+  font-size: 30px; color: #16324c; padding: 6px 10px;
+}
+.seq .item.q { color: #b3261e; font-weight: 800; font-size: 34px; }
+.g9 { display: grid; grid-template-columns: repeat(3, 1fr); width: min(78vw, 240px); margin: 4px auto 14px; gap: 6px; }
+.g9 span { aspect-ratio: 1; background: #fff; border: 2px solid #d7e3ef; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #16324c; }
+.g9 span.miss { color: #b3261e; font-weight: 800; font-size: 26px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(46%, 160px), 1fr)); gap: 12px; }
+.opts.single { grid-template-columns: 1fr; }
+.opt {
+  background: #fff; border: 2px solid #c9d9e8; border-radius: 12px;
+  min-height: 62px; font-size: 18px; color: #16324c; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 14px; line-height: 1.5; text-align: center;
+}
+.opt .tag { font-weight: 800; color: #2f7fc1; flex: 0 0 auto; }
+.opt:active { background: #eef5fb; }
+.opt.picked { border-color: #2f7fc1; background: #dcecfa; }
+.opt.dead { pointer-events: none; opacity: .85; }
+/* SECTION: flash study */
+.study { text-align: center; }
+.study .big-char { font-size: 96px; font-weight: 800; color: #0f3357; margin: 20px 0; }
+.study .emojis { font-size: 56px; letter-spacing: 14px; margin: 26px 0; }
+.mgrid { display: grid; grid-template-columns: repeat(3, 1fr); width: min(80vw, 260px); margin: 10px auto; gap: 8px; }
+.mgrid div { aspect-ratio: 1; background: #fff; border: 2px solid #c9d9e8; border-radius: 12px; }
+.mgrid div.dot-r { background: #d64541; border-color: #b3261e; }
+.mgrid.pick div { cursor: pointer; }
+.mgrid.pick div:active { background: #e6f1fb; }
+/* SECTION: result */
+.rrow { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; }
+.rrow .nm { flex: 0 0 128px; font-size: 14px; font-weight: 700; color: #33475c; }
+.rrow .wrap { flex: 1; background: #e6edf4; border-radius: 999px; height: 14px; overflow: hidden; }
+.rrow .fill { height: 100%; background: linear-gradient(90deg, #2f7fc1, #57b06d); border-radius: 999px; transition: width .8s; }
+.rrow .sc { flex: 0 0 66px; text-align: right; font-size: 14px; font-weight: 700; color: #16324c; font-variant-numeric: tabular-nums; }
+.verdict { font-size: 16px; line-height: 1.8; background: #fff; border-left: 4px solid #57b06d; border-radius: 8px; padding: 12px 16px; margin-top: 14px; color: #33475c; }
+.foot { text-align: center; font-size: 12px; color: #7d93a8; padding: 10px; }
+.center { align-items: center; text-align: center; }
+</style>
+<link rel="icon" href="data:,"></head>
+<body>
+<!-- SECTION: skeleton -->
+<div class="card">
+  <div class="bar" id="bar" hidden>
+    <span class="mod" id="barMod"></span>
+    <span id="barSid" style="opacity:.75"></span>
+    <span class="spacer"></span>
+    <span>第 <b id="barQ">1</b>/<span id="barN">10</span> 题</span>
+    <span class="timer" id="barTime">00:00</span>
+  </div>
+  <div class="body" id="app"></div>
+  <div class="foot">北中科学嘉年华机考模拟 · 仅供周四周五课堂热身使用，非官方系统</div>
+</div>
+<script>
+"use strict";
+/* SECTION: helpers */
+function el(tag, cls, html) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+}
+function fmt(s) {
+  var m = Math.floor(s / 60), r = s % 60;
+  return (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
+}
+function arrow(deg) {
+  return '<svg viewBox="0 0 60 60" width="44" height="44" aria-hidden="true"><g transform="rotate(' + deg + ' 30 30)">' +
+    '<line x1="30" y1="46" x2="30" y2="16" stroke="#16324c" stroke-width="5" stroke-linecap="round"/>' +
+    '<polygon points="30,6 21,19 39,19" fill="#2f7fc1"/></g></svg>';
+}
+function seqHtml(items) {
+  var h = '<div class="seq">';
+  for (var i = 0; i < items.length; i++) {
+    h += '<div class="item' + (items[i] === "?" ? " q" : "") + '">' + items[i] + "</div>";
+  }
+  return h + "</div>";
+}
+function grid9(cells, missIdx) {
+  var h = '<div class="g9">';
+  for (var i = 0; i < 9; i++) {
+    h += "<span" + (i === missIdx ? ' class="miss"' : "") + ">" + (i === missIdx ? "?" : cells[i]) + "</span>";
+  }
+  return h + "</div>";
+}
+/* SECTION: data — 模块与题目 */
+var SCALE = ["完全符合", "比较符合", "不太符合", "完全不符合"];
+var MODULES = [
+  {
+    name: "模块一 · 数形规律", short: "数形规律", secs: 300,
+    tip: "本模块共 <b>10</b> 题，限时 <b>5 分钟</b>。观察图形或数字的变化规律，从选项中选出下一个。<br>规则：每题<b>只能作答一次，选定后立即进入下一题，不能回退</b>；时间到自动结束本模块。",
+    qs: [
+      { seq: [arrow(0), arrow(90), arrow(180), "?"], stem: "箭头按规律旋转，？处应是：", opts: [arrow(270), arrow(0), arrow(90), arrow(180)], a: 0 },
+      { seq: ["2", "4", "8", "16", "?"], stem: "数字规律，？处应是：", opts: ["24", "30", "32", "64"], a: 2 },
+      { seq: ["△", "△△", "△△△", "△△△△", "?"], stem: "图形数量规律，？处应是：", opts: ["△△", "△△△", "△△△△△", "△△△△△△"], a: 2 },
+      { seq: ["○", "□", "○", "□", "○", "?"], stem: "重复规律，？处应是：", opts: ["○", "□", "△", "◇"], a: 1 },
+      { seq: ["◔", "◑", "◕", "?"], stem: "圆形的涂色部分每次增加四分之一，？处应是：", opts: ["◕", "◔", "●", "○"], a: 2 },
+      { seq: ["1", "1", "2", "3", "5", "8", "?"], stem: "每个数等于前两个数之和，？处应是：", opts: ["11", "12", "13", "14"], a: 2 },
+      { seq: ["1", "4", "9", "16", "?"], stem: "平方数规律（1×1, 2×2, 3×3…），？处应是：", opts: ["20", "24", "25", "36"], a: 2 },
+      { grid: ["△", "○", "□", "○", "□", "△", "□", "△", "?"], stem: "九宫格里每行、每列都有 △ ○ □ 各一个，？处应是：", opts: ["△", "○", "□", "◇"], a: 1 },
+      { seq: ["3", "2", "5", "4", "7", "6", "9", "?"], stem: "两组数字交替排列，？处应是：", opts: ["7", "8", "9", "10"], a: 1 },
+      { seq: [arrow(180), arrow(90), arrow(0), "?"], stem: "箭头按规律旋转（与第1题方向相反），？处应是：", opts: [arrow(0), arrow(90), arrow(270), arrow(180)], a: 2 }
+    ]
+  },
+  {
+    name: "模块二 · 瞬时记忆", short: "瞬时记忆", secs: 120,
+    tip: "本模块共 <b>6</b> 题。屏幕上会先短暂展示一个图形或画面（只有 <b>1~2 秒</b>），消失后再作答。<br>集中注意力盯住关键特征：位置？对称？出现过谁？选定即进入下一题。",
+    qs: [
+      { type: "grid", pos: 4, studyMs: 1500, stem: "刚才红色圆点在哪个格子里？点击那个格子。" },
+      { type: "sym", ch: "H", ok: true, studyMs: 1200, stem: "刚才展示的字母是轴对称图形吗？", opts: ["是", "不是"], a: 0 },
+      { type: "flash", emo: ["🍎", "🚗", "⭐", "🎈"], studyMs: 2000, stem: "刚才的画面里出现过下面哪一个？", opts: ["🚀", "🚗", "🎁", "⚽"], a: 1 },
+      { type: "grid", pos: 0, studyMs: 1500, stem: "刚才红色圆点在哪个格子里？点击那个格子。" },
+      { type: "sym", ch: "S", ok: false, studyMs: 1200, stem: "刚才展示的字母是轴对称图形吗？", opts: ["是", "不是"], a: 1 },
+      { type: "flash", emo: ["🐱", "🌙", "🎸", "⚽"], studyMs: 2000, stem: "下面哪一个<b>没有</b>出现在刚才的画面里？", opts: ["🐱", "🎸", "🍦", "⚽"], a: 2 }
+    ]
+  },
+  {
+    name: "模块三 · 折纸穿洞", short: "折纸穿洞", secs: 90,
+    tip: "本模块共 <b>5</b> 题。想象（或用手比划）一张纸对折后打孔再展开的样子，选出结果。<br>小提示：每对折一次，层数翻倍；<b>孔打在折痕上，展开会合并</b>。",
+    qs: [
+      { stem: "把一张圆纸对折 1 次，在折好纸面的中间（避开折边）打 1 个孔，展开后共有几个孔？", opts: ["1", "2", "3", "4"], a: 1 },
+      { stem: "把一张圆纸连续对折 2 次，在纸面中间（避开所有折边）打 1 个孔，展开后共有几个孔？", opts: ["2", "3", "4", "8"], a: 2 },
+      { stem: "把一张正方形纸对折 2 次，正好在两次折痕相交的那个角（即原纸中心）打 1 个孔，展开后共有几个孔？", opts: ["1", "2", "4", "8"], a: 0 },
+      { stem: "把一张圆纸连续对折 3 次，在纸面中间（避开所有折边）打 1 个孔，展开后共有几个孔？", opts: ["3", "6", "8", "9"], a: 2 },
+      { stem: "把一张正方形纸对折 2 次，剪掉一个角（不经过折痕交点），完全展开后纸的边缘共缺了几个角？", opts: ["1", "2", "4", "8"], a: 2 }
+    ]
+  },
+  {
+    name: "模块四 · 文字词语推演", short: "文字推演", secs: 90,
+    tip: "本模块共 <b>5</b> 题。考的是词语和符号之间的<b>逻辑关系</b>，不考背诵的知识点。<br>先想清楚「关系是什么」：工具与用途？范围大小？还是数字代换？",
+    qs: [
+      { stem: "时钟 之于 时间，相当于 温度计 之于 ？", opts: ["冷", "天气", "温度", "水银"], a: 2 },
+      { stem: "规定 A=1，B=2，C=3，那么 C + A − B 等于：", opts: ["1", "2", "3", "4"], a: 1 },
+      { stem: "把「猫、动物、宠物」按范围从小到大排列，正确的是：", opts: ["猫、动物、宠物", "猫、宠物、动物", "宠物、猫、动物", "动物、宠物、猫"], a: 1 },
+      { stem: "医生 之于 听诊器，相当于 木匠 之于 ？", opts: ["木材", "锤子", "桌子", "房子"], a: 1 },
+      { stem: "○+○=10，○+△=8，△+□=9，那么 □ 等于：", opts: ["5", "6", "7", "8"], a: 1 }
+    ]
+  },
+  {
+    name: "心理小问卷（不计分）", short: "心理问卷", secs: 60,
+    tip: "最后 4 道题<b>没有对错、不计分</b>，只是了解一下你的习惯。<br>按<b>第一反应</b>选最接近你真实情况的选项，前后保持一致就可以。",
+    qs: [
+      { stem: "遇到难题时，我通常会先自己想办法试一试。", opts: SCALE },
+      { stem: "考试或比赛前，我会感到紧张。", opts: SCALE },
+      { stem: "我喜欢拼积木、拼图或解谜这类动手动脑的游戏。", opts: SCALE },
+      { stem: "做决定时，我一般很快就能拿定主意。", opts: SCALE }
+    ]
+  }
+];
+var SCALE = ["完全符合", "比较符合", "不太符合", "完全不符合"];
+/* SECTION: state */
+var S = { sid: "", mi: 0, qi: 0, score: [], answered: [], left: 0, timer: null, phase: "intro", studyLock: false };
+var app = document.getElementById("app"), bar = document.getElementById("bar");
+var barMod = document.getElementById("barMod"), barSid = document.getElementById("barSid");
+var barQ = document.getElementById("barQ"), barN = document.getElementById("barN"), barTime = document.getElementById("barTime");
+/* SECTION: intro */
+function renderIntro() {
+  S.phase = "intro"; bar.hidden = true; app.innerHTML = ""; app.classList.remove("center");
+  app.appendChild(el("h1", null, "北京中学科学嘉年华<br>机考模拟练习"));
+  app.appendChild(el("div", "sub", "模拟真实考场：四个能力模块＋心理问卷，全程限时、只用鼠标点击作答。共 5 个模块 30 题，约 11 分钟。"));
+  var rules = el("div", "rules");
+  rules.appendChild(el("div", "rule", "1. 每个模块独立倒计时，时间到<b>自动跳转</b>下一模块。"));
+  rules.appendChild(el("div", "rule", "2. 每题<b>只能点一次</b>，选定即锁定、不能回退、不显示对错——和真考场一样。"));
+  rules.appendChild(el("div", "rule", "3. 考场会用你的 <b>8 位教育ID</b>，现在就输入练习一下（本页面不会保存、不会上传，输错不扣分）。"));
+  rules.appendChild(el("div", "rule", "4. 全部结束后生成<b>成绩报告</b>与备考建议。"));
+  app.appendChild(rules);
+  app.appendChild(el("label", "f", "输入 8 位教育ID："));
+  var inp = el("input", "sid");
+  inp.type = "text"; inp.maxLength = 8; inp.inputMode = "numeric"; inp.placeholder = "例如 48122301"; inp.autocomplete = "off";
+  app.appendChild(inp);
+  var err = el("div", "err"); app.appendChild(err);
+  var btn = el("button", "big", "确认身份，进入考场");
+  btn.addEventListener("click", function () {
+    var v = inp.value.trim();
+    if (!/^\d{8}$/.test(v)) { err.textContent = "教育ID应为 8 位数字，请核对后再输入（考场上要背熟的哦）。"; return; }
+    if (!S.score.length) { S.score = MODULES.map(function () { return { ok: 0, n: 0 }; }); }
+    S.sid = v; startModule(0);
+  });
+  app.appendChild(btn);
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") btn.click(); });
+}
+/* SECTION: instruction */
+function startModule(mi) {
+  S.mi = mi; S.qi = 0; S.phase = "tip"; clearInterval(S.timer);
+  bar.hidden = false;
+  var m = MODULES[mi];
+  barMod.textContent = "模块 " + (mi + 1) + " / " + MODULES.length + " · " + m.short;
+  barSid.textContent = "ID " + S.sid;
+  barQ.textContent = "1"; barN.textContent = String(m.qs.length);
+  barTime.textContent = fmt(m.secs); barTime.classList.remove("warn");
+  app.innerHTML = ""; app.classList.remove("center");
+  app.appendChild(el("h1", null, m.name));
+  app.appendChild(el("div", "tipbox", m.tip));
+  app.appendChild(el("div", "count", "3"));
+  var c = 3, t = el("div", "sub", "准备中，请坐好、手放在鼠标上……");
+  app.appendChild(t);
+  var iv = setInterval(function () {
+    c--;
+    var cd = app.querySelector(".count");
+    if (c <= 0) { clearInterval(iv); beginQuiz(); return; }
+    if (cd) cd.textContent = String(c);
+  }, 1000);
+}
+/* SECTION: quiz */
+function beginQuiz() {
+  var m = MODULES[S.mi];
+  S.left = m.secs; S.phase = "quiz";
+  clearInterval(S.timer);
+  S.timer = setInterval(function () {
+    S.left--;
+    barTime.textContent = fmt(Math.max(0, S.left));
+    if (S.left <= 30) barTime.classList.add("warn");
+    if (S.left <= 0) { clearInterval(S.timer); nextModuleOrEnd(); }
+  }, 1000);
+  barTime.textContent = fmt(S.left);
+  renderQuestion();
+}
+function renderQuestion() {
+  var m = MODULES[S.mi], q = m.qs[S.qi];
+  barQ.textContent = String(S.qi + 1);
+  app.innerHTML = ""; app.classList.remove("center");
+  var tags = ["A", "B", "C", "D", "E"];
+  if (q.type === "grid") { studyGrid(q); return; }
+  if (q.type === "sym") { studyChar(q); return; }
+  if (q.type === "flash") { studyFlash(q); return; }
+  /* 普通选择题 */
+  var stemHtml = "";
+  if (q.seq) stemHtml += seqHtml(q.seq);
+  if (q.grid) stemHtml += grid9(q.grid, 8);
+  app.appendChild(el("div", "qstem", "第 " + (S.qi + 1) + " 题｜" + q.stem));
+  if (stemHtml) {
+    var holder = el("div");
+    holder.innerHTML = stemHtml;
+    app.appendChild(holder);
+  }
+  var correct = (q.a === undefined) ? -1 : q.a;
+  var wrap = el("div", "opts" + ((q.opts.length === 2) ? " single" : ""));
+  q.opts.forEach(function (o, i) {
+    var b = el("div", "opt");
+    b.appendChild(el("span", "tag", tags[i]));
+    var body = el("span");
+    body.innerHTML = o;
+    b.appendChild(body);
+    b.addEventListener("click", function () {
+      if (S.studyLock) return;
+      Array.prototype.forEach.call(wrap.children, function (c) { c.classList.add("dead"); });
+      b.classList.add("picked");
+      recordPick(correct, i);
+    });
+    wrap.appendChild(b);
+  });
+  app.appendChild(wrap);
+}
+/* 统一延时推进 */
+function advance() {
+  S.studyLock = true;
+  setTimeout(function () {
+    S.studyLock = false;
+    S.qi++;
+    if (S.qi >= MODULES[S.mi].qs.length) { nextModuleOrEnd(); }
+    else if (S.phase === "quiz") { renderQuestion(); }
+  }, 380);
+}
+/* SECTION: 瞬时记忆题 */
+function recordPick(correctIdx, pickIdx) {
+  S.score[S.mi].n++;
+  if (pickIdx === correctIdx) S.score[S.mi].ok++;
+  advance();
+}
+function studyGrid(q) {
+  app.appendChild(el("div", "qstem", "第 " + (S.qi + 1) + " 题｜仔细看——红色圆点马上消失！"));
+  var g = el("div", "mgrid");
+  for (var i = 0; i < 9; i++) {
+    var c = el("div", i === q.pos ? "dot-r" : "");
+    g.appendChild(c);
+  }
+  app.appendChild(g);
+  setTimeout(function () {
+    if (S.phase !== "quiz" || S.mi !== 1) return;
+    testGrid(q);
+  }, q.studyMs);
+}
+function testGrid(q) {
+  app.innerHTML = "";
+  app.appendChild(el("div", "qstem", "第 " + (S.qi + 1) + " 题｜" + q.stem));
+  var g = el("div", "mgrid pick");
+  for (var i = 0; i < 9; i++) {
+    (function (idx) {
+      var c = el("div");
+      c.addEventListener("click", function () {
+        if (S.studyLock) return;
+        Array.prototype.forEach.call(g.children, function (x) { x.style.pointerEvents = "none"; });
+        c.classList.add("dot-r");
+        recordPick(q.pos, idx);
+      });
+      g.appendChild(c);
+    })(i);
+  }
+  app.appendChild(g);
+}
+function studyChar(q) {
+  app.appendChild(el("div", "qstem", "第 " + (S.qi + 1) + " 题｜盯住这个字母！"));
+  var box = el("div", "study");
+  box.appendChild(el("div", "big-char", q.ch));
+  app.appendChild(box);
+  setTimeout(function () {
+    if (S.phase !== "quiz" || S.mi !== 1) return;
+    askNormal(q, "第 " + (S.qi + 1) + " 题｜" + q.stem);
+  }, q.studyMs);
+}
+function studyFlash(q) {
+  app.appendChild(el("div", "qstem", "第 " + (S.qi + 1) + " 题｜记住出现了哪些！"));
+  var box = el("div", "study");
+  box.appendChild(el("div", "emojis", q.emo.join("")));
+  app.appendChild(box);
+  setTimeout(function () {
+    if (S.phase !== "quiz" || S.mi !== 1) return;
+    askNormal(q, "第 " + (S.qi + 1) + " 题｜" + q.stem);
+  }, q.studyMs);
+}
+function askNormal(q, stem) {
+  app.innerHTML = "";
+  app.appendChild(el("div", "qstem", stem));
+  var tags = ["A", "B", "C", "D"];
+  var wrap = el("div", "opts" + (q.opts.length === 2 ? " single" : ""));
+  q.opts.forEach(function (o, i) {
+    var b = el("div", "opt");
+    b.appendChild(el("span", "tag", tags[i]));
+    var body = el("span");
+    body.innerHTML = o;
+    b.appendChild(body);
+    b.addEventListener("click", function () {
+      if (S.studyLock) return;
+      Array.prototype.forEach.call(wrap.children, function (c) { c.classList.add("dead"); });
+      b.classList.add("picked");
+      recordPick(q.a, i);
+    });
+    wrap.appendChild(b);
+  });
+  app.appendChild(wrap);
+}
+/* SECTION: module flow */
+function nextModuleOrEnd() {
+  clearInterval(S.timer);
+  /* 未作答的题按 0 分计入题量 */
+  var m = MODULES[S.mi];
+  while (S.score[S.mi].n < m.qs.length) S.score[S.mi].n++;
+  if (S.mi + 1 >= MODULES.length) { renderResult(); }
+  else { startModule(S.mi + 1); }
+}
+/* SECTION: result */
+function renderResult() {
+  S.phase = "result";
+  bar.hidden = true; app.innerHTML = ""; app.classList.remove("center");
+  var scored = 0, got = 0;
+  for (var i = 0; i < 4; i++) { scored += MODULES[i].qs.length; got += S.score[i].ok; }
+  app.appendChild(el("h1", null, "考试结束 · 成绩报告"));
+  app.appendChild(el("div", "sub", "教育ID " + S.sid + " ｜ 全部 4 个能力模块共 " + scored + " 题，你答对 <b>" + got + "</b> 题（" + Math.round(got / scored * 100) + "%）。"));
+  var list = el("div", null); list.style.marginTop = "16px";
+  MODULES.forEach(function (m, i) {
+    var pct = m.qs.length ? Math.round(S.score[i].ok / m.qs.length * 100) : 0;
+    var row = el("div", "rrow");
+    row.appendChild(el("div", "nm", m.short + (i === 4 ? "（不计分）" : "")));
+    var w = el("div", "wrap");
+    var f = el("div", "fill"); f.style.width = "0%"; w.appendChild(f);
+    row.appendChild(w);
+    row.appendChild(el("div", "sc", i === 4 ? "—" : S.score[i].ok + "/" + m.qs.length));
+    list.appendChild(row);
+    setTimeout(function () { f.style.width = pct + "%"; }, 60);
+  });
+  app.appendChild(list);
+  var rate = got / scored, v;
+  if (rate >= 0.8) v = "表现非常稳！你的观察力和逻辑都在状态。保持这个节奏，考场上记住：难题不恋战，会做的都拿住。";
+  else if (rate >= 0.6) v = "整体不错，节奏感还可以再快一点。数形规律控制在每题 20 秒内；折纸穿洞多用纸动手折两次就开窍了。";
+  else v = "第一次模拟不适应很正常——真考场的题目更长、更快，答不完是常态，不算失败。重点关注错题最多的模块，周四周五课上我们逐个拆方法。";
+  app.appendChild(el("div", "verdict", "<b>备考建议：</b>" + v + "<br><b>心态：</b>这是「被看见」的机会，不是「被淘汰」的考试。放松参加，剩下时间享受科技馆一样的校园。"));
+  var again = el("button", "big ghost", "再测一次（换一批手感）");
+  again.addEventListener("click", function () { S.score = []; S.mi = 0; S.qi = 0; renderIntro(); });
+  app.appendChild(again);
+}
+/* SECTION: boot */
+renderIntro();
+</script>
+<script id="meoo-baxia-web-security" async src="https://g.alicdn.com/sd/baxia/2.5.35/baxiaCommon.js"></script>
+      <div id="meoo-brand-watermark" style="
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999999;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 12px;
+        color: #666;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 6px 8px 6px 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(8px);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      " onclick="window.open('https://meoo.com', '_blank')"
+         onmouseover="this.style.transform='scale(1.02)'; this.style.background='rgba(255, 255, 255, 0.98)'; this.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.15)';"
+         onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(255, 255, 255, 0.95)'; this.style.boxShadow='0 2px 12px rgba(0, 0, 0, 0.1)';">
+        <img src="https://assets.cdn.meoo.host/public/meoo-logo.png" alt="Meoo" style="width: 16px; height: 16px; border-radius: 3px;">
+        <span style="white-space: nowrap;">By <span style="font-weight: 600; color: #007bff;">Meoo 秒悟</span></span>
+        <button onclick="event.stopPropagation(); document.getElementById('meoo-brand-watermark').remove();" style="
+          background: none;
+          border: none;
+          color: #bbb;
+          cursor: pointer;
+          font-size: 16px;
+          font-weight: bold;
+          margin-left: 2px;
+          padding: 0;
+          width: 14px;
+          height: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.2s ease;
+          line-height: 1;
+        " onmouseover="this.style.color='#666';" onmouseout="this.style.color='#bbb';">×</button>
+      </div>
+    </body>
+</html>
